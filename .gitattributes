@@ -1,0 +1,2 @@
+#https://lgug2z.com/articles/handling-secrets-in-nixos-an-overview/
+secrets/** filter=git-crypt diff=git-crypt

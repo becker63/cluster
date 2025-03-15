@@ -1,3 +1,4 @@
+# https://git.rossabaker.com/actions-bot/clan-infra
 {
   description = "packages and build scripts";
 
@@ -5,37 +6,43 @@
     nixpkgs.url = "github:NixOS/nixpkgs/24.11";
     disko.url = "github:nix-community/disko";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
+    # Needed for mission control
     flake-root.url = "github:srid/flake-root";
+    mission-control.url = "github:Platonic-Systems/mission-control";
   };
 
   outputs =
     inputs@{
-      self,
       nixpkgs,
       flake-parts,
+      flake-root,
+      mission-control,
+      nixos-facter-modules,
+      disko,
       ...
     }:
     flake-parts.lib.mkFlake
       {
         inherit inputs;
-        inherit self;
       }
       {
         flake =
           let
-            shared = [
-              inputs.flake-root.flakeModule
-            ];
-            secrets = builtins.fromJSON (builtins.readFile "${self}/secrets/secrets.json");
+
+            secrets = builtins.fromJSON (builtins.readFile ./secrets/secrets.json);
+            rootPath = ./.;
           in
           {
-            nixosConfigurations.home-pc = nixpkgs.lib.nixosSystem {
+
+            nixosConfigurations.iso = nixpkgs.lib.nixosSystem {
+              system = "x86_64-linux";
               modules = [
-                ./hosts/home-pc/configuration.nix
-              ] ++ shared;
+                ./iso-builder
+              ];
               specialArgs = {
-                inherit inputs;
-                inherit secrets;
+                inherit secrets rootPath;
+                lib = nixpkgs.lib;
               };
             };
           };
@@ -46,27 +53,20 @@
           "aarch64-darwin"
         ];
 
-        perSystem =
-          { pkgs, system, ... }:
-          {
-            # Apply overlay and allow unfree packages
-            _module.args.pkgs = import nixpkgs {
-              inherit system;
-              config.allowUnfree = true;
-            };
+        imports = [
+          flake-root.flakeModule
+          mission-control.flakeModule
+          (
+            {
+              withSystem,
+              ...
+            }:
+            import ./configurations/kubeNode {
+              inherit withSystem inputs;
+              rootPath = ./.;
+            }
+          )
+        ];
 
-            packages.default = pkgs.mkShell {
-              buildInputs = with pkgs; [
-                terraform
-                terraform-providers.libvirt
-                libxslt
-                qemu
-              ];
-
-              shellHook = ''
-                zsh
-              '';
-            };
-          };
       };
 }

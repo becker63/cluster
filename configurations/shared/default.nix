@@ -1,10 +1,8 @@
-{ pkgs, modulesPath, ... }:
 {
-
-  imports = [
-    "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"
-  ];
-
+  secrets,
+  ...
+}:
+{
   services.openssh = {
     enable = true;
     settings = {
@@ -14,6 +12,6 @@
   };
 
   users.users.root = {
-    password = "jidw"; # Set an empty password for root
+    password = "${secrets.nixos.root_password}"; # Set an empty password for root
   };
 }

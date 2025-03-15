@@ -1,4 +1,3 @@
-# https://git.rossabaker.com/actions-bot/clan-infra
 {
   description = "packages and build scripts";
 
@@ -7,7 +6,6 @@
     disko.url = "github:nix-community/disko";
     flake-parts.url = "github:hercules-ci/flake-parts";
     nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
-    # Needed for mission control
     flake-root.url = "github:srid/flake-root";
     mission-control.url = "github:Platonic-Systems/mission-control";
   };
@@ -26,47 +24,49 @@
       {
         inherit inputs;
       }
-      {
-        flake =
-          let
+      (
+        let
+          # 1) Define secrets in a single place
+          secrets = builtins.fromJSON (builtins.readFile ./secrets/secrets.json);
+          rootPath = ./.;
+        in
+        {
+          # Systems you can provision with, I really wouldnt recommend building on darwin though, you need a remote builder
+          systems = [
+            "x86_64-linux"
+            "aarch64-darwin"
+          ];
 
-            secrets = builtins.fromJSON (builtins.readFile ./secrets/secrets.json);
-            rootPath = ./.;
-          in
-          {
+          imports = [
+            # Needed for mission-control
+            flake-root.flakeModule
+            mission-control.flakeModule
+            ./runners.nix
 
-            nixosConfigurations.iso = nixpkgs.lib.nixosSystem {
-              system = "x86_64-linux";
-              modules = [
-                ./iso-builder
-              ];
-              specialArgs = {
-                inherit secrets rootPath;
-                lib = nixpkgs.lib;
-              };
-            };
-          };
+            # Pass 'secrets' to 'kubeNode' once
+            (
+              { withSystem, ... }:
+              import ./configurations/kubeNode {
+                inherit
+                  withSystem
+                  secrets
+                  rootPath
+                  ;
+              }
+            )
 
-        # Everything that is not a nixosConfiguration
-        systems = [
-          "x86_64-linux"
-          "aarch64-darwin"
-        ];
-
-        imports = [
-          flake-root.flakeModule
-          mission-control.flakeModule
-          (
-            {
-              withSystem,
-              ...
-            }:
-            import ./configurations/kubeNode {
-              inherit withSystem inputs;
-              rootPath = ./.;
-            }
-          )
-        ];
-
-      };
+            # Pass 'secrets' to 'iso-builder' once
+            (
+              { withSystem, ... }:
+              import ./iso-builder {
+                inherit
+                  withSystem
+                  secrets
+                  rootPath
+                  ;
+              }
+            )
+          ];
+        }
+      );
 }

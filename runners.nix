@@ -1,5 +1,3 @@
-# https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/
-# https://github.com/Platonic-Systems/mission-control/tree/a562943f45d9b8ae63dd62ec084202fdbdbeb83f
 # run `nix develop` to get these scripts
 {
   perSystem =
@@ -9,6 +7,14 @@
       system,
       ...
     }:
+    let
+      unfreePkgs = import pkgs.path {
+        inherit system;
+        config = {
+          allowUnfree = true;
+        };
+      };
+    in
     {
       mission-control.scripts = {
         # Utils
@@ -27,11 +33,12 @@
       };
       devShells.default = pkgs.mkShell {
         inputsFrom = [ config.mission-control.devShell ];
-        buildinputs = with pkgs; [
+        buildinputs = with unfreePkgs; [
           terraform
         ];
         shellHook = ''
-            # https://discourse.nixos.org/t/using-nix-develop-opens-bash-instead-of-zsh/25075/17 TLDR: Too much setup, idc bro just exit twice
+          # https://discourse.nixos.org/t/using-nix-develop-opens-bash-instead-of-zsh/25075/17 TLDR: Too much setup, idc bro just exit twice
+          export ROOT="${./.}"
           zsh
         '';
       };

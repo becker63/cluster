@@ -1,7 +1,6 @@
 {
   rootPath,
   withSystem,
-  inputs,
   ...
 }:
 let
@@ -13,8 +12,9 @@ in
       name = node.name;
 
       value = withSystem "x86_64-linux" (
-        { config, inputs', ... }:
-        inputs.nixpkgs.lib.nixosSystem {
+        { pkgs, inputs', ... }:
+        pkgs.lib.nixosSystem {
+          networking.hostId = node.hostid;
           specialArgs = {
             inherit inputs';
           };

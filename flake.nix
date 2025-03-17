@@ -31,7 +31,7 @@
           rootPath = ./.;
         in
         {
-          # Systems you can provision with, I really wouldnt recommend building on darwin though, you need a remote builder
+          # Systems you can provision with, I really would not recommend building on darwin though, you need a remote builder
           systems = [
             "x86_64-linux"
             "aarch64-darwin"
@@ -43,29 +43,23 @@
             mission-control.flakeModule
             ./runners.nix
 
-            # Pass 'secrets' to 'kubeNode' once
-            (
-              { withSystem, ... }:
-              import ./configurations/kubeNode {
-                inherit
-                  withSystem
-                  secrets
-                  rootPath
-                  ;
-              }
-            )
+            # kubernetes nodes
+            (import ./configurations/kubeNode {
+              inherit
+                inputs
+                secrets
+                rootPath
+                ;
+            })
 
-            # Pass 'secrets' to 'iso-builder' once
-            (
-              { withSystem, ... }:
-              import ./iso-builder {
-                inherit
-                  withSystem
-                  secrets
-                  rootPath
-                  ;
-              }
-            )
+            # iso bootstrap
+            (import ./iso-builder {
+              inherit
+                inputs
+                secrets
+                rootPath
+                ;
+            })
           ];
         }
       );
